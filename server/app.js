@@ -2,44 +2,33 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
+const os = require("os");
 
 const app = express();
-// Tüm originlere izin ver (CORS hatasını önlemek için)
 app.use(cors());
-app.use(express.json());
-
 const server = http.createServer(app);
 
-// 1. WebSocket Sunucusunu oluştur
 const wss = new WebSocket.Server({ server });
 
+app.use(express.json());
+
+// Render'da veya localde çalıştığını anlamak için basit kontrol
 const PORT = process.env.PORT || 3000;
 
-// 2. GET: Sunucu durumunu kontrol et ve dinamik URL'leri göster
 app.get("/", (req, res) => {
-  // Render veya Local ortamına göre protokolü belirle
+  // Senin kullandığın isimlere sadık kalarak, URL'leri dinamik oluşturuyoruz
+  const host = req.get("host"); 
   const protocol = req.protocol === "https" ? "https" : "http";
-  const wsProtocol = req.protocol === "https" ? "wss" : "ws";
-  const host = req.get("host");
+  const ws_protocol = req.protocol === "https" ? "wss" : "ws";
 
   res.json({
-    message: "IoT Gateway Active",
+    message: "Active",
+    url: `${protocol}://${host}/data`,
+    ws_endpoint: `${ws_protocol}://${host}`,
     status: "ok",
-    // Telefon uygulamasına girilecek URL
-    copy_to_app: `${protocol}://${host}/data`,
-    // React tarafında bağlanılacak WS URL
-    ws_endpoint: `${wsProtocol}://${host}`,
-    active_sensors: [
-      "microphone",
-      "light",
-      "battery",
-      "magnetometer",
-      "gyroscope"
-    ]
   });
 });
 
-// 3. POST: Telefondan (Sensor Logger) gelen veriyi işle
 app.post("/data", (req, res) => {
   const { payload } = req.body;
 
@@ -50,26 +39,25 @@ app.post("/data", (req, res) => {
       sensors: {},
     };
 
-    // En güncel veriyi almak için tersten tara
     for (let i = payload.length - 1; i >= 0; i--) {
       const item = payload[i];
-      const targetSensors = [
-        "microphone",
-        "light",
-        "battery",
-        "magnetometer",
-        "battery temp",
-        "gyroscope",
-      ];
-
-      if (targetSensors.includes(item.name) && !iotData.sensors[item.name]) {
+      if (
+        [
+          "microphone",
+          "light",
+          "battery",
+          "magnetometer",
+          "battery temp",
+          "gyroscope",
+        ].includes(item.name) &&
+        !iotData.sensors[item.name]
+      ) {
         iotData.sensors[item.name] = item.values;
       }
     }
 
     const message = JSON.stringify(iotData);
 
-    // WebSocket üzerinden tüm bağlı istemcilere (React) yay
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
@@ -79,7 +67,6 @@ app.post("/data", (req, res) => {
   res.sendStatus(200);
 });
 
-// 4. Sunucuyu Başlat (0.0.0.0 dış erişim için kritik)
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 IoT Server listening on port ${PORT}`);
+  console.log(`Server is running.`);
 });
