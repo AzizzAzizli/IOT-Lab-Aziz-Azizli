@@ -2,48 +2,46 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
-const os = require("os");
-const { log } = require("console");
 
 const app = express();
+// Tüm originlere izin ver (CORS hatasını önlemek için)
 app.use(cors());
-const server = http.createServer(app);
-
-// 1. WebSocket Sunucusunu Express ile aynı porta bağla
-const wss = new WebSocket.Server({ server });
-
 app.use(express.json());
 
-// IP Adresini otomatik bulma fonksiyonu
-const getLocalIP = () => {
-  const interfaces = os.networkInterfaces();
-  for (let name in interfaces) {
-    for (let iface of interfaces[name]) {
-      if (iface.family === "IPv4" && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return "localhost";
-};
+const server = http.createServer(app);
+
+// 1. WebSocket Sunucusunu oluştur
+const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
-const IP_ADDR = getLocalIP();
 
-// 2. GET: Telefon uygulamasına kopyalaman için URL'i gösterir
+// 2. GET: Sunucu durumunu kontrol et ve dinamik URL'leri göster
 app.get("/", (req, res) => {
+  // Render veya Local ortamına göre protokolü belirle
+  const protocol = req.protocol === "https" ? "https" : "http";
+  const wsProtocol = req.protocol === "https" ? "wss" : "ws";
+  const host = req.get("host");
+
   res.json({
-    message: "Active",
-    url: `http://${IP_ADDR}:${PORT}/data`,
-    ws_endpoint: `wss://${IP_ADDR}:${PORT}`,
+    message: "IoT Gateway Active",
     status: "ok",
+    // Telefon uygulamasına girilecek URL
+    copy_to_app: `${protocol}://${host}/data`,
+    // React tarafında bağlanılacak WS URL
+    ws_endpoint: `${wsProtocol}://${host}`,
+    active_sensors: [
+      "microphone",
+      "light",
+      "battery",
+      "magnetometer",
+      "gyroscope"
+    ]
   });
 });
 
-// 3. POST: Telefondan gelen veriyi filtrele ve WebSocket'e bas
+// 3. POST: Telefondan (Sensor Logger) gelen veriyi işle
 app.post("/data", (req, res) => {
   const { payload } = req.body;
-  // console.log(payload);
 
   if (payload && Array.isArray(payload)) {
     const iotData = {
@@ -51,29 +49,27 @@ app.post("/data", (req, res) => {
       timestamp: Date.now(),
       sensors: {},
     };
-    // console.log(payload);
 
+    // En güncel veriyi almak için tersten tara
     for (let i = payload.length - 1; i >= 0; i--) {
       const item = payload[i];
-      if (
-        [
-          "microphone",
-          "light",
-          "battery",
-          "magnetometer",
-          "battery temp",
-          "gyroscope",
-        ].includes(item.name) &&
-        !iotData.sensors[item.name]
-      ) {
+      const targetSensors = [
+        "microphone",
+        "light",
+        "battery",
+        "magnetometer",
+        "battery temp",
+        "gyroscope",
+      ];
+
+      if (targetSensors.includes(item.name) && !iotData.sensors[item.name]) {
         iotData.sensors[item.name] = item.values;
       }
     }
 
     const message = JSON.stringify(iotData);
-    // log(message)
 
-    // WebSocket üzerinden bağlı olan React vb. istemcilere gönder
+    // WebSocket üzerinden tüm bağlı istemcilere (React) yay
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
@@ -83,7 +79,7 @@ app.post("/data", (req, res) => {
   res.sendStatus(200);
 });
 
-// 4. Sunucuyu Başlat
+// 4. Sunucuyu Başlat (0.0.0.0 dış erişim için kritik)
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running.`);
+  console.log(`🚀 IoT Server listening on port ${PORT}`);
 });
