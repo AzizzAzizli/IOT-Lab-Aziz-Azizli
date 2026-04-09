@@ -18,8 +18,8 @@ const PORT = process.env.PORT || 3000;
 app.get("/", (req, res) => {
   // Senin kullandığın isimlere sadık kalarak, URL'leri dinamik oluşturuyoruz
   const host = req.get("host"); 
-  const protocol = req.protocol === "https" ? "https" : "http";
-  const ws_protocol = req.protocol === "https" ? "wss" : "ws";
+  const protocol = req.protocol == "https" 
+  const ws_protocol = req.protocol == "wss" 
 
   res.json({
     message: "Active",
