@@ -27,7 +27,7 @@ const getLocalIP = () => {
   return "localhost";
 };
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const IP_ADDR = getLocalIP();
 
 // 2. GET: Telefon uygulamasına kopyalaman için URL'i gösterir
