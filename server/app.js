@@ -35,7 +35,7 @@ app.get("/", (req, res) => {
   res.json({
     message: "Active",
     url: `http://${IP_ADDR}:${PORT}/data`,
-    ws_endpoint: `ws://${IP_ADDR}:${PORT}`,
+    ws_endpoint: `wss://${IP_ADDR}:${PORT}`,
     status: "ok",
   });
 });
