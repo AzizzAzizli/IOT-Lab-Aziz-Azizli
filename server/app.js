@@ -12,19 +12,14 @@ const wss = new WebSocket.Server({ server });
 
 app.use(express.json());
 
-// Render'da veya localde çalıştığını anlamak için basit kontrol
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  // Senin kullandığın isimlere sadık kalarak, URL'leri dinamik oluşturuyoruz
   const host = req.get("host"); 
-  const protocol = req.protocol == "https" 
-  const ws_protocol = req.protocol == "wss" 
-
   res.json({
     message: "Active",
-    url: `${protocol}://${host}/data`,
-    ws_endpoint: `${ws_protocol}://${host}`,
+    url: `https://${host}/data`,
+    ws_endpoint: `wss://${host}`,
     status: "ok",
   });
 });
