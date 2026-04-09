@@ -1,10 +1,12 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const cors = require("cors");
 const os = require("os");
 const { log } = require("console");
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
 
 // 1. WebSocket Sunucusunu Express ile aynı porta bağla
